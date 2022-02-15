@@ -83,10 +83,7 @@ void buzzer_loop()
     for (;;)
     {
         // wait for 5000 os ticks
-        osDelay(5000);
-
-        // log out for debugging
-        info1("Buzzer Starting");
+        osDelay(500);
 
         // toggle buzzer pin
         GPIO_PinOutToggle(gpioPortA, 0);
