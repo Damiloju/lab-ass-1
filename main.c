@@ -140,41 +140,20 @@ void button_loop(void *args)
 
         if (buzzer_task_state == osThreadBlocked)
         {
-            info1("Blocked buzzer task");
+            // resume buzzer task if task is suspended
+            osThreadResume(buzzer_task_id);
+            info1("Buzzer task resumed")
         }
-        else if (buzzer_task_state == osThreadRunning)
+        else if (buzzer_task_state == osThreadRunning || buzzer_task_state == osThreadReady)
         {
-            info1("Running buzzer task");
-        }
-        else if (buzzer_task_state == osThreadInactive)
-        {
-            info1("Inactive buzzer task");
-        }
-        else if (buzzer_task_state == osThreadReady)
-        {
-            info1("Ready buzzer task");
-        }
-        else if (buzzer_task_state == osThreadError)
-        {
-            info1("Error buzzer task");
+            // suspend buzzer task if it's running
+            osThreadSuspend(buzzer_task_id);
+            info1("Buzzer task suspended");
         }
         else
         {
-            info1("Unknown buzzer task state");
+            info1("Error buzzer task might not exist or is inactive");
         }
-
-        // if (/* condition */)
-        // {
-        //     // suspend buzzer task if it's running
-        //     osThreadSuspend(buzzer_task_id);
-        //     info1("Buzzer task suspended");
-        // }
-        // else
-        // {
-        //     // resume buzzer task if task is suspended
-        //     osThreadResume(buzzer_task_id);
-        //     info1("Buzzer task resumed")
-        // }
     }
 }
 
