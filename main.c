@@ -142,7 +142,7 @@ void button_loop(void *args)
         {
             // resume buzzer task if task is suspended
             osThreadResume(buzzer_task_id);
-            info1("Buzzer task resumed")
+            info1("Buzzer task resumed");
         }
         else if (buzzer_task_state == osThreadRunning || buzzer_task_state == osThreadReady)
         {
