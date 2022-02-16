@@ -80,6 +80,7 @@ typedef enum
     F,
     T
 } boolean;
+// declare variable to keep buzzer task state
 boolean buzzer_task_started = F;
 // Heartbeat thread, initialize GPIO and print heartbeat messages.
 void hp_loop()
@@ -146,6 +147,7 @@ void button_loop(void *args)
         // do smt
         info1("Button Interrupt toggled");
 
+        // suspend and resume buzzer task based on the previous state of buzzer_task_started
         if (buzzer_task_started)
         {
             // suspend buzzer task if it's running/allowed to run
