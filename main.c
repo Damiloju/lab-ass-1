@@ -128,7 +128,6 @@ void buzzer_loop()
 // button interrupt task
 void button_loop(void *args)
 {
-    osThreadState_t buzzer_task_state;
     for (;;)
     {
         osThreadFlagsClear(buttonExtIntThreadFlag);
@@ -136,15 +135,14 @@ void button_loop(void *args)
 
         // do smt
         info1("Button Interrupt toggled");
-        buzzer_task_state = osThreadGetState(button_task_id);
 
-        if (buzzer_task_state == osThreadBlocked)
+        if (osThreadGetState(button_task_id); == osThreadBlocked)
         {
             // resume buzzer task if task is suspended
             osThreadResume(buzzer_task_id);
             info1("Buzzer task resumed");
         }
-        else if (buzzer_task_state == osThreadRunning || buzzer_task_state == osThreadReady)
+        else if (osThreadGetState(button_task_id); == osThreadRunning)
         {
             // suspend buzzer task if it's running
             osThreadSuspend(buzzer_task_id);
