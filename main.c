@@ -128,6 +128,7 @@ void buzzer_loop()
 // button interrupt task
 void button_loop(void *args)
 {
+    osThreadState_t buzzer_task_state;
     for (;;)
     {
         osThreadFlagsClear(buttonExtIntThreadFlag);
@@ -135,23 +136,49 @@ void button_loop(void *args)
 
         // do smt
         info1("Button Interrupt toggled");
+        buzzer_task_state = osThreadGetState(buzzer_task_id);
 
-        if (osThreadGetState(button_task_id) == osThreadBlocked)
+        if (buzzer_task_state == osThreadBlocked)
         {
-            // resume buzzer task if task is suspended
-            osThreadResume(buzzer_task_id);
-            info1("Buzzer task resumed");
+            info1("Blocked buzzer task");
         }
-        else if (osThreadGetState(button_task_id) == osThreadRunning)
+        else if (buzzer_task_state == osThreadRunning)
         {
-            // suspend buzzer task if it's running
-            osThreadSuspend(buzzer_task_id);
-            info1("Buzzer task suspended");
+            info1("Running buzzer task");
+        }
+        else if (buzzer_task_state == osThreadInactive)
+        {
+            info1("Inactive buzzer task");
+        }
+        else if (buzzer_task_state == osThreadReady)
+        {
+            info1("Ready buzzer task");
+        }
+        else if (buzzer_task_state == osThreadError)
+        {
+            info1("Error buzzer task");
         }
         else
         {
-            info1("Error buzzer task might not exist or is inactive");
+            info1("Unknown buzzer task state");
         }
+
+        // if (buzzer_task_state == osThreadBlocked)
+        // {
+        //     // resume buzzer task if task is suspended
+        //     osThreadResume(buzzer_task_id);
+        //     info1("Buzzer task resumed");
+        // }
+        // else if (buzzer_task_state == osThreadRunning)
+        // {
+        //     // suspend buzzer task if it's running
+        //     osThreadSuspend(buzzer_task_id);
+        //     info1("Buzzer task suspended");
+        // }
+        // else
+        // {
+        //     info1("Error buzzer task might not exist or is inactive");
+        // }
     }
 }
 
