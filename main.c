@@ -52,8 +52,27 @@
 #include "incbin.h"
 INCBIN(Header, "header.bin");
 
+#define ESWGPIO_EXTI_INDEX 4         // External interrupt number 4.
+#define ESWGPIO_EXTI_IF 0x00000010UL // Interrupt flag for external interrupt
+
 // declare buzzer function
 void buzzer_loop();
+
+// declare button function
+void button_loop();
+
+// declare initGPIOButton funtion
+void initGPIOButton();
+void buttonIntEnable();
+
+// initialize var to hold button task id
+osThreadId_t button_task_id;
+
+// initialize var to hold buzzer task id (which will be used later to suspend the buzzer task)
+osThreadId_t buzzer_task_id;
+
+// declare flag to resume thread
+static const uint32_t buttonExtIntThreadFlag = 0x00000001;
 
 // Heartbeat thread, initialize GPIO and print heartbeat messages.
 void hp_loop()
@@ -68,7 +87,20 @@ void hp_loop()
 
     // create a thread/task for buzzer
     const osThreadAttr_t BUZZER_thread_attr = {.name = "BUZZER_thread_attr"};
-    osThreadNew(buzzer_loop, NULL, &BUZZER_thread_attr);
+    buzzer_task_id = osThreadNew(buzzer_loop, NULL, &BUZZER_thread_attr);
+
+    // Set up the pins for the Buttons
+    GPIO_PinModeSet(gpioPortF, 4, gpioModeInputPullFilter, 1);
+
+    // Initialize GPIO interrupt for button
+    initGPIOButton();
+
+    // Create a thread/task.
+    const osThreadAttr_t button_thread_attr = {.name = "button"};
+    button_task_id = osThreadNew(button_loop, NULL, &button_thread_attr);
+
+    // Enable button interrupt
+    buttonIntEnable();
 
     for (;;)
     {
@@ -77,19 +109,45 @@ void hp_loop()
     }
 }
 
-// TODO buzzer thread.
+// buzzer task.
 void buzzer_loop()
 {
     for (;;)
     {
-        // wait for 5000 os ticks
+        // wait for 500 os ticks
         osDelay(500);
 
         // toggle buzzer pin
         GPIO_PinOutToggle(gpioPortA, 0);
 
         // log out for debugging
-        info1("Buzzer tone ended");
+        info1("Buzzer tone played");
+    }
+}
+
+// button interrupt task
+void button_loop(void *args)
+{
+    for (;;)
+    {
+        osThreadFlagsClear(buttonExtIntThreadFlag);
+        osThreadFlagsWait(buttonExtIntThreadFlag, osFlagsWaitAny, osWaitForever);
+
+        // do smt
+        info1("Button Interrupt toggled");
+        info1(osThreadGetState(button_task_id));
+        // if (/* condition */)
+        // {
+        //     // suspend buzzer task if it's running
+        //     osThreadSuspend(buzzer_task_id);
+        //     info1("Buzzer task suspended");
+        // }
+        // else
+        // {
+        //     // resume buzzer task if task is suspended
+        //     osThreadResume(buzzer_task_id);
+        //     info1("Buzzer task resumed")
+        // }
     }
 }
 
@@ -133,4 +191,42 @@ int main()
 
     for (;;)
         ;
+}
+
+// Button interrupt thread.
+void initGPIOButton()
+{
+    GPIO_IntDisable(ESWGPIO_EXTI_IF); // Disable before config to avoid unwanted interrupt trigerring
+
+    GPIO_ExtIntConfig(gpioPortF, 4, ESWGPIO_EXTI_INDEX, false, true, false); //  port , pin, EXTI number, rising edge, falling edge enabled
+
+    GPIO_InputSenseSet(GPIO_INSENSE_INT, GPIO_INSENSE_INT);
+}
+
+void buttonIntEnable()
+{
+    GPIO_IntClear(ESWGPIO_EXTI_IF);
+
+    NVIC_EnableIRQ(GPIO_EVEN_IRQn);
+    NVIC_SetPriority(GPIO_EVEN_IRQn, 3);
+
+    GPIO_IntEnable(ESWGPIO_EXTI_IF);
+}
+
+void GPIO_EVEN_IRQHandler(void)
+{
+    // Get all pending and enabled interrupts.
+    uint32_t pending = GPIO_IntGetEnabled();
+
+    // Check if button interrupt is enabled
+    if (pending & ESWGPIO_EXTI_IF)
+    {
+        // clear interrupt flag.
+        GPIO_IntClear(ESWGPIO_EXTI_IF);
+
+        // Trigger button thread to resume.
+        osThreadFlagsSet(button_task_id, buttonExtIntThreadFlag);
+    }
+    else
+        ; // This was not a button interrupt.
 }
