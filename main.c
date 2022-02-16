@@ -74,6 +74,13 @@ osThreadId_t buzzer_task_id;
 // declare flag to resume thread
 static const uint32_t buttonExtIntThreadFlag = 0x00000001;
 
+// Declaration of enum of boolean values
+typedef enum
+{
+    F,
+    T
+} boolean;
+boolean buzzer_task_started = F;
 // Heartbeat thread, initialize GPIO and print heartbeat messages.
 void hp_loop()
 {
@@ -120,6 +127,9 @@ void buzzer_loop()
         // toggle buzzer pin
         GPIO_PinOutToggle(gpioPortA, 0);
 
+        // set start to true
+        buzzer_task_started = T;
+
         // log out for debugging
         info1("Buzzer tone played");
     }
@@ -128,7 +138,6 @@ void buzzer_loop()
 // button interrupt task
 void button_loop(void *args)
 {
-    osThreadState_t buzzer_task_state;
     for (;;)
     {
         osThreadFlagsClear(buttonExtIntThreadFlag);
@@ -136,49 +145,21 @@ void button_loop(void *args)
 
         // do smt
         info1("Button Interrupt toggled");
-        buzzer_task_state = osThreadGetState(buzzer_task_id);
 
-        if (buzzer_task_state == osThreadBlocked)
+        if (buzzer_task_started)
         {
-            info1("Blocked buzzer task");
-        }
-        else if (buzzer_task_state == osThreadRunning)
-        {
-            info1("Running buzzer task");
-        }
-        else if (buzzer_task_state == osThreadInactive)
-        {
-            info1("Inactive buzzer task");
-        }
-        else if (buzzer_task_state == osThreadReady)
-        {
-            info1("Ready buzzer task");
-        }
-        else if (buzzer_task_state == osThreadError)
-        {
-            info1("Error buzzer task");
+            // suspend buzzer task if it's running/allowed to run
+            osThreadSuspend(buzzer_task_id);
+            buzzer_task_started = F;
+            info1("Buzzer task suspended");
         }
         else
         {
-            info1("Unknown buzzer task state");
+            // resume buzzer task if task is suspended
+            osThreadResume(buzzer_task_id);
+            buzzer_task_started = T;
+            info1("Buzzer task resumed");
         }
-
-        // if (buzzer_task_state == osThreadBlocked)
-        // {
-        //     // resume buzzer task if task is suspended
-        //     osThreadResume(buzzer_task_id);
-        //     info1("Buzzer task resumed");
-        // }
-        // else if (buzzer_task_state == osThreadRunning)
-        // {
-        //     // suspend buzzer task if it's running
-        //     osThreadSuspend(buzzer_task_id);
-        //     info1("Buzzer task suspended");
-        // }
-        // else
-        // {
-        //     info1("Error buzzer task might not exist or is inactive");
-        // }
     }
 }
 
