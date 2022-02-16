@@ -128,6 +128,7 @@ void buzzer_loop()
 // button interrupt task
 void button_loop(void *args)
 {
+    osThreadState_t buzzer_task_state;
     for (;;)
     {
         osThreadFlagsClear(buttonExtIntThreadFlag);
@@ -135,7 +136,33 @@ void button_loop(void *args)
 
         // do smt
         info1("Button Interrupt toggled");
-        info1(osThreadGetState(button_task_id));
+        buzzer_task_state = osThreadGetState(button_task_id);
+
+        if (buzzer_task_state == osThreadBlocked)
+        {
+            info1("Blocked buzzer task");
+        }
+        else if (buzzer_task_state == osThreadRunning)
+        {
+            info1("Running buzzer task");
+        }
+        else if (buzzer_task_state == osThreadInactive)
+        {
+            info1("Inactive buzzer task");
+        }
+        else if (buzzer_task_state == osThreadReady)
+        {
+            info1("Ready buzzer task");
+        }
+        else if (buzzer_task_state == osThreadError)
+        {
+            info1("Error buzzer task");
+        }
+        else
+        {
+            info1("Unknown buzzer task state");
+        }
+
         // if (/* condition */)
         // {
         //     // suspend buzzer task if it's running
