@@ -55,6 +55,10 @@ INCBIN(Header, "header.bin");
 #define ESWGPIO_EXTI_INDEX 4         // External interrupt number 4.
 #define ESWGPIO_EXTI_IF 0x00000010UL // Interrupt flag for external interrupt
 
+// declare setup functions
+void set_up_pins();
+void set_up_tasks();
+
 // declare buzzer functions
 void buzzer_loop();
 void buzzer_loop_two();
@@ -82,8 +86,10 @@ typedef enum
     F,
     T
 } boolean;
+
 // declare variable to keep buzzer task state
 boolean buzzer_task_started = F;
+
 // Heartbeat thread, initialize GPIO and print heartbeat messages.
 void hp_loop()
 {
@@ -92,26 +98,14 @@ void hp_loop()
     // TODO Initialize GPIO.
     CMU_ClockEnable(cmuClock_GPIO, true);
 
-    // Set up buzzer pins
-    GPIO_PinModeSet(gpioPortA, 0, gpioModePushPull, 0);
+    // Set up pins to be used for interrupt and buzzer
+    set_up_pins();
 
-    // create a thread/task for buzzer
-    const osThreadAttr_t BUZZER_thread_attr = {.name = "BUZZER_thread_attr"};
-    buzzer_task_id = osThreadNew(buzzer_loop, NULL, &BUZZER_thread_attr);
-
-    // create a thread/task for buzzer tone two
-    const osThreadAttr_t BUZZER_thread_two_attr = {.name = "BUZZER_thread_two_attr"};
-    buzzer_task_two_id = osThreadNew(buzzer_loop_two, NULL, &BUZZER_thread_two_attr);
-
-    // Set up the pins for the Buttons
-    GPIO_PinModeSet(gpioPortF, 4, gpioModeInputPullFilter, 1);
+    // set up threads/tasks
+    set_up_tasks();
 
     // Initialize GPIO interrupt for button
     initGPIOButton();
-
-    // Create a thread/task.
-    const osThreadAttr_t button_thread_attr = {.name = "button"};
-    button_task_id = osThreadNew(button_loop, NULL, &button_thread_attr);
 
     // Enable button interrupt
     buttonIntEnable();
@@ -123,13 +117,36 @@ void hp_loop()
     }
 }
 
+void set_up_pins()
+{
+    // Set up buzzer pins
+    GPIO_PinModeSet(gpioPortA, 0, gpioModePushPull, 0);
+    // Set up the pins for the Buttons
+    GPIO_PinModeSet(gpioPortF, 4, gpioModeInputPullFilter, 1);
+}
+
+void set_up_tasks()
+{
+    // create a thread/task for buzzer
+    const osThreadAttr_t BUZZER_thread_attr = {.name = "BUZZER_thread_attr"};
+    buzzer_task_id = osThreadNew(buzzer_loop, NULL, &BUZZER_thread_attr);
+
+    // create a thread/task for buzzer tone two
+    const osThreadAttr_t BUZZER_thread_two_attr = {.name = "BUZZER_thread_two_attr"};
+    buzzer_task_two_id = osThreadNew(buzzer_loop_two, NULL, &BUZZER_thread_two_attr);
+
+    // Create a thread/task.
+    const osThreadAttr_t button_thread_attr = {.name = "button"};
+    button_task_id = osThreadNew(button_loop, NULL, &button_thread_attr);
+}
+
 // buzzer task.
 void buzzer_loop()
 {
     for (;;)
     {
-        // wait for 500 os ticks
-        osDelay(50);
+        // wait for 70 os ticks
+        osDelay(70);
 
         // toggle buzzer pin
         GPIO_PinOutToggle(gpioPortA, 0);
@@ -147,8 +164,8 @@ void buzzer_loop_two()
 {
     for (;;)
     {
-        // wait for 500 os ticks
-        osDelay(20);
+        // wait for 40 os ticks
+        osDelay(40);
 
         // toggle buzzer pin
         GPIO_PinOutToggle(gpioPortA, 0);
@@ -169,10 +186,10 @@ void button_loop(void *args)
         // do smt
         info1("Button Interrupt toggled");
 
-        // suspend and resume buzzer task based on the previous state of buzzer_task_started
+        // suspend and resume buzzer tasks based on the previous state of buzzer_task_started
         if (buzzer_task_started)
         {
-            // suspend buzzer task if it's running/allowed to run
+            // suspend buzzer tasks if they are running/allowed to run
             osThreadSuspend(buzzer_task_id);
             osThreadSuspend(buzzer_task_two_id);
             buzzer_task_started = F;
@@ -180,7 +197,7 @@ void button_loop(void *args)
         }
         else
         {
-            // resume buzzer task if task is suspended
+            // resume buzzer tasks if they are suspended
             osThreadResume(buzzer_task_id);
             osThreadResume(buzzer_task_two_id);
             buzzer_task_started = T;
