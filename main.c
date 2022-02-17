@@ -55,8 +55,9 @@ INCBIN(Header, "header.bin");
 #define ESWGPIO_EXTI_INDEX 4         // External interrupt number 4.
 #define ESWGPIO_EXTI_IF 0x00000010UL // Interrupt flag for external interrupt
 
-// declare buzzer function
+// declare buzzer functions
 void buzzer_loop();
+void buzzer_loop_two();
 
 // declare button function
 void button_loop();
@@ -70,6 +71,7 @@ osThreadId_t button_task_id;
 
 // initialize var to hold buzzer task id (which will be used later to suspend the buzzer task)
 osThreadId_t buzzer_task_id;
+osThreadId_t buzzer_task_two_id;
 
 // declare flag to resume thread
 static const uint32_t buttonExtIntThreadFlag = 0x00000001;
@@ -96,6 +98,10 @@ void hp_loop()
     // create a thread/task for buzzer
     const osThreadAttr_t BUZZER_thread_attr = {.name = "BUZZER_thread_attr"};
     buzzer_task_id = osThreadNew(buzzer_loop, NULL, &BUZZER_thread_attr);
+
+    // create a thread/task for buzzer tone two
+    const osThreadAttr_t BUZZER_thread_two_attr = {.name = "BUZZER_thread_two_attr"};
+    buzzer_task_two_id = osThreadNew(buzzer_loop_two, NULL, &BUZZER_thread_two_attr);
 
     // Set up the pins for the Buttons
     GPIO_PinModeSet(gpioPortF, 4, gpioModeInputPullFilter, 1);
@@ -136,6 +142,22 @@ void buzzer_loop()
     }
 }
 
+// buzzer task tone two.
+void buzzer_loop_two()
+{
+    for (;;)
+    {
+        // wait for 500 os ticks
+        osDelay(20);
+
+        // toggle buzzer pin
+        GPIO_PinOutToggle(gpioPortA, 0);
+
+        // log out for debugging
+        info1("Buzzer tone two played");
+    }
+}
+
 // button interrupt task
 void button_loop(void *args)
 {
@@ -152,15 +174,17 @@ void button_loop(void *args)
         {
             // suspend buzzer task if it's running/allowed to run
             osThreadSuspend(buzzer_task_id);
+            osThreadSuspend(buzzer_task_two_id);
             buzzer_task_started = F;
-            info1("Buzzer task suspended");
+            info1("Buzzer tasks suspended");
         }
         else
         {
             // resume buzzer task if task is suspended
             osThreadResume(buzzer_task_id);
+            osThreadResume(buzzer_task_two_id);
             buzzer_task_started = T;
-            info1("Buzzer task resumed");
+            info1("Buzzer tasks resumed");
         }
     }
 }
